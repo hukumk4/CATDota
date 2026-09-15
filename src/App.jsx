@@ -325,7 +325,7 @@ function DraftRoom({ session, leave }) {
   useEffect(() => {
     if (myTurn && timerSec > 0 && remaining === 0 && !autoRef.current && match) {
       autoRef.current = true;
-      const avail = match.pool.filter(id => !usedIds.has(id));
+      const avail = asArr(match.pool).filter(id => !usedIds.has(id));
       if (avail.length) commit(avail[Math.floor(Math.random() * avail.length)]);
     }
     if (remaining !== 0) autoRef.current = false;
@@ -410,8 +410,8 @@ function PhaseBanner({ match, cur, teamOf, remaining, timerSec }) {
 function SequenceStrip({ match, teamOf }) {
   return (
     <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginTop: 12 }}>
-      {match.sequence.map((s, i) => {
-        const done = match.actions[i];
+      {asArr(match.sequence).map((s, i) => {
+        const done = asArr(match.actions)[i];
         const isCur = match.status === "active" && i === match.step;
         const col = s.team === "radiant" ? C.radiant : C.dire;
         const h = done ? HERO_MAP[done.heroId] : null;
@@ -470,7 +470,7 @@ function TeamColumn({ side, name, picks, bans, slots, active }) {
 }
 
 function PoolArea({ match, cur, myTurn, usedIds, selected, setSelected, commit, busy, role, startDraft, teamOf }) {
-  const pool = match.pool.map(id => HERO_MAP[id]);
+  const pool = asArr(match.pool).map(id => HERO_MAP[id]);
   const canAct = myTurn && !busy;
   return (
     <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: 12 }}>
@@ -498,7 +498,7 @@ function PoolArea({ match, cur, myTurn, usedIds, selected, setSelected, commit, 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(96px,1fr))", gap: 7 }}>
         {pool.map(h => {
           const used = usedIds.has(h.id);
-          const act = match.actions.find(a => a.heroId === h.id);
+          const act = asArr(match.actions).find(a => a.heroId === h.id);
           const isSel = selected === h.id;
           const clickable = canAct && !used;
           return (
