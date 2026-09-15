@@ -5,6 +5,7 @@ import { ref, get, set, onValue, runTransaction } from "firebase/database";
 
 const HEROES=[{id:102,n:"Abaddon",img:"abaddon",a:"all"},{id:73,n:"Alchemist",img:"alchemist",a:"str"},{id:68,n:"Ancient Apparition",img:"ancient_apparition",a:"int"},{id:1,n:"Anti-Mage",img:"antimage",a:"agi"},{id:113,n:"Arc Warden",img:"arc_warden",a:"all"},{id:2,n:"Axe",img:"axe",a:"str"},{id:3,n:"Bane",img:"bane",a:"all"},{id:65,n:"Batrider",img:"batrider",a:"all"},{id:38,n:"Beastmaster",img:"beastmaster",a:"all"},{id:4,n:"Bloodseeker",img:"bloodseeker",a:"agi"},{id:62,n:"Bounty Hunter",img:"bounty_hunter",a:"agi"},{id:78,n:"Brewmaster",img:"brewmaster",a:"all"},{id:99,n:"Bristleback",img:"bristleback",a:"str"},{id:61,n:"Broodmother",img:"broodmother",a:"agi"},{id:96,n:"Centaur Warrunner",img:"centaur",a:"str"},{id:81,n:"Chaos Knight",img:"chaos_knight",a:"str"},{id:66,n:"Chen",img:"chen",a:"int"},{id:56,n:"Clinkz",img:"clinkz",a:"agi"},{id:51,n:"Clockwerk",img:"rattletrap",a:"str"},{id:5,n:"Crystal Maiden",img:"crystal_maiden",a:"int"},{id:55,n:"Dark Seer",img:"dark_seer",a:"int"},{id:119,n:"Dark Willow",img:"dark_willow",a:"int"},{id:135,n:"Dawnbreaker",img:"dawnbreaker",a:"str"},{id:50,n:"Dazzle",img:"dazzle",a:"all"},{id:43,n:"Death Prophet",img:"death_prophet",a:"all"},{id:87,n:"Disruptor",img:"disruptor",a:"int"},{id:69,n:"Doom",img:"doom_bringer",a:"str"},{id:49,n:"Dragon Knight",img:"dragon_knight",a:"str"},{id:6,n:"Drow Ranger",img:"drow_ranger",a:"agi"},{id:107,n:"Earth Spirit",img:"earth_spirit",a:"str"},{id:7,n:"Earthshaker",img:"earthshaker",a:"str"},{id:103,n:"Elder Titan",img:"elder_titan",a:"str"},{id:106,n:"Ember Spirit",img:"ember_spirit",a:"agi"},{id:58,n:"Enchantress",img:"enchantress",a:"int"},{id:33,n:"Enigma",img:"enigma",a:"all"},{id:41,n:"Faceless Void",img:"faceless_void",a:"agi"},{id:121,n:"Grimstroke",img:"grimstroke",a:"int"},{id:72,n:"Gyrocopter",img:"gyrocopter",a:"agi"},{id:123,n:"Hoodwink",img:"hoodwink",a:"agi"},{id:59,n:"Huskar",img:"huskar",a:"str"},{id:74,n:"Invoker",img:"invoker",a:"int"},{id:91,n:"Io",img:"wisp",a:"all"},{id:64,n:"Jakiro",img:"jakiro",a:"int"},{id:8,n:"Juggernaut",img:"juggernaut",a:"agi"},{id:90,n:"Keeper of the Light",img:"keeper_of_the_light",a:"int"},{id:145,n:"Kez",img:"kez",a:"agi"},{id:23,n:"Kunkka",img:"kunkka",a:"str"},{id:155,n:"Largo",img:"largo",a:"str"},{id:104,n:"Legion Commander",img:"legion_commander",a:"str"},{id:52,n:"Leshrac",img:"leshrac",a:"int"},{id:31,n:"Lich",img:"lich",a:"int"},{id:54,n:"Lifestealer",img:"life_stealer",a:"str"},{id:25,n:"Lina",img:"lina",a:"int"},{id:26,n:"Lion",img:"lion",a:"int"},{id:80,n:"Lone Druid",img:"lone_druid",a:"agi"},{id:48,n:"Luna",img:"luna",a:"agi"},{id:77,n:"Lycan",img:"lycan",a:"str"},{id:97,n:"Magnus",img:"magnataur",a:"all"},{id:136,n:"Marci",img:"marci",a:"all"},{id:129,n:"Mars",img:"mars",a:"str"},{id:94,n:"Medusa",img:"medusa",a:"agi"},{id:82,n:"Meepo",img:"meepo",a:"agi"},{id:9,n:"Mirana",img:"mirana",a:"agi"},{id:114,n:"Monkey King",img:"monkey_king",a:"agi"},{id:10,n:"Morphling",img:"morphling",a:"agi"},{id:138,n:"Muerta",img:"muerta",a:"int"},{id:89,n:"Naga Siren",img:"naga_siren",a:"agi"},{id:53,n:"Nature's Prophet",img:"furion",a:"all"},{id:36,n:"Necrophos",img:"necrolyte",a:"int"},{id:60,n:"Night Stalker",img:"night_stalker",a:"str"},{id:88,n:"Nyx Assassin",img:"nyx_assassin",a:"all"},{id:84,n:"Ogre Magi",img:"ogre_magi",a:"str"},{id:57,n:"Omniknight",img:"omniknight",a:"str"},{id:111,n:"Oracle",img:"oracle",a:"int"},{id:76,n:"Outworld Devourer",img:"obsidian_destroyer",a:"int"},{id:120,n:"Pangolier",img:"pangolier",a:"all"},{id:44,n:"Phantom Assassin",img:"phantom_assassin",a:"agi"},{id:12,n:"Phantom Lancer",img:"phantom_lancer",a:"agi"},{id:110,n:"Phoenix",img:"phoenix",a:"str"},{id:137,n:"Primal Beast",img:"primal_beast",a:"str"},{id:13,n:"Puck",img:"puck",a:"int"},{id:14,n:"Pudge",img:"pudge",a:"str"},{id:45,n:"Pugna",img:"pugna",a:"int"},{id:39,n:"Queen of Pain",img:"queenofpain",a:"int"},{id:15,n:"Razor",img:"razor",a:"agi"},{id:32,n:"Riki",img:"riki",a:"agi"},{id:131,n:"Ring Master",img:"ringmaster",a:"int"},{id:86,n:"Rubick",img:"rubick",a:"int"},{id:16,n:"Sand King",img:"sand_king",a:"all"},{id:79,n:"Shadow Demon",img:"shadow_demon",a:"int"},{id:11,n:"Shadow Fiend",img:"nevermore",a:"agi"},{id:27,n:"Shadow Shaman",img:"shadow_shaman",a:"int"},{id:75,n:"Silencer",img:"silencer",a:"int"},{id:101,n:"Skywrath Mage",img:"skywrath_mage",a:"int"},{id:28,n:"Slardar",img:"slardar",a:"str"},{id:93,n:"Slark",img:"slark",a:"agi"},{id:128,n:"Snapfire",img:"snapfire",a:"all"},{id:35,n:"Sniper",img:"sniper",a:"agi"},{id:67,n:"Spectre",img:"spectre",a:"agi"},{id:71,n:"Spirit Breaker",img:"spirit_breaker",a:"str"},{id:17,n:"Storm Spirit",img:"storm_spirit",a:"int"},{id:18,n:"Sven",img:"sven",a:"str"},{id:105,n:"Techies",img:"techies",a:"all"},{id:46,n:"Templar Assassin",img:"templar_assassin",a:"agi"},{id:109,n:"Terrorblade",img:"terrorblade",a:"agi"},{id:29,n:"Tidehunter",img:"tidehunter",a:"str"},{id:98,n:"Timbersaw",img:"shredder",a:"str"},{id:34,n:"Tinker",img:"tinker",a:"int"},{id:19,n:"Tiny",img:"tiny",a:"str"},{id:83,n:"Treant Protector",img:"treant",a:"str"},{id:95,n:"Troll Warlord",img:"troll_warlord",a:"agi"},{id:100,n:"Tusk",img:"tusk",a:"str"},{id:108,n:"Underlord",img:"abyssal_underlord",a:"str"},{id:85,n:"Undying",img:"undying",a:"str"},{id:70,n:"Ursa",img:"ursa",a:"agi"},{id:20,n:"Vengeful Spirit",img:"vengefulspirit",a:"agi"},{id:40,n:"Venomancer",img:"venomancer",a:"all"},{id:47,n:"Viper",img:"viper",a:"agi"},{id:92,n:"Visage",img:"visage",a:"all"},{id:126,n:"Void Spirit",img:"void_spirit",a:"all"},{id:37,n:"Warlock",img:"warlock",a:"int"},{id:63,n:"Weaver",img:"weaver",a:"agi"},{id:21,n:"Windranger",img:"windrunner",a:"all"},{id:112,n:"Winter Wyvern",img:"winter_wyvern",a:"int"},{id:30,n:"Witch Doctor",img:"witch_doctor",a:"int"},{id:42,n:"Wraith King",img:"skeleton_king",a:"str"},{id:22,n:"Zeus",img:"zuus",a:"int"}];
 const HERO_MAP = Object.fromEntries(HEROES.map(h => [h.id, h]));
+const asArr = (x) => Array.isArray(x) ? x : (x && typeof x === "object" ? Object.values(x) : []);
 const ATTR_COLOR = { str: "#e0554c", agi: "#4caf50", int: "#5bb3e0", all: "#c58fe0" };
 
 const C = {
@@ -279,7 +280,15 @@ function DraftRoom({ session, leave }) {
 
   // realtime subscription
   useEffect(() => {
-    const unsub = onValue(mref(code), (snap) => { const v = snap.val(); if (v) setMatch(v); });
+    const unsub = onValue(mref(code), (snap) => {
+      const v = snap.val();
+      if (v) {
+        v.actions = asArr(v.actions);
+        v.pool = asArr(v.pool);
+        v.sequence = asArr(v.sequence);
+        setMatch(v);
+      }
+    });
     return () => unsub();
   }, [code]);
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 250); return () => clearInterval(t); }, []);
@@ -292,7 +301,7 @@ function DraftRoom({ session, leave }) {
         if (!m) return;                      // abort & retry with server value
         if (m.status !== "active") return;
         const cur = m.sequence[m.step];
-        const actions = m.actions || [];
+        const actions = asArr(m.actions);
         if (!cur || cur.team !== role) return;
         if (actions.some(a => a.heroId === heroId)) return;
         if (!m.pool.includes(heroId)) return;
@@ -342,8 +351,8 @@ function DraftRoom({ session, leave }) {
   if (!match) return <div style={{ marginTop: 40, color: C.dim }}>Загрузка матча {code}…</div>;
   const cfg = match.config;
   const teamOf = (t) => t === "radiant" ? cfg.radiantName : cfg.direName;
-  const picksOf = (t) => match.actions.filter(a => a.team === t && a.type === "pick");
-  const bansOf = (t) => match.actions.filter(a => a.team === t && a.type === "ban");
+  const picksOf = (t) => asArr(match.actions).filter(a => a.team === t && a.type === "pick");
+  const bansOf = (t) => asArr(match.actions).filter(a => a.team === t && a.type === "ban");
 
   return (
     <div>
