@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Shield, Swords, Eye, Copy, Check, RefreshCw, Play, LogOut, Plus, LogIn, Ban, Crown, Dices, AlertTriangle, Clock } from "lucide-react";
+import { Shield, Swords, Eye, Copy, Check, Play, LogOut, Plus, LogIn, Ban, Crown, Dices, AlertTriangle, Clock } from "lucide-react";
 import { db } from "./firebase";
 import { ref, get, set, onValue, runTransaction } from "firebase/database";
 
@@ -9,9 +9,10 @@ const asArr = (x) => Array.isArray(x) ? x : (x && typeof x === "object" ? Object
 const ATTR_COLOR = { str: "#e0554c", agi: "#4caf50", int: "#5bb3e0", all: "#c58fe0" };
 
 const C = {
-  bg: "#0e1420", panel: "#161d2b", panel2: "#1d2634", line: "#2a3547",
-  gold: "#d4af37", goldSoft: "#e8c86a", text: "#e6ecf5", dim: "#8a97ab",
-  radiant: "#5aab4f", radiantDk: "#274a24", dire: "#c0392b", direDk: "#4a201b",
+  bg: "#150e2b", panel: "#1f1743", panel2: "#2a1f57", line: "#3d2f70",
+  gold: "#a78bfa", goldSoft: "#c4b5fd", text: "#f0ecff", dim: "#a99cd6",
+  radiant: "#38bdf8", radiantDk: "#0e3350", dire: "#fbbf24", direDk: "#4a3410",
+  ban: "#ff5470", pick: "#3ddc84",
 };
 const genCode = () => Array.from({ length: 5 }, () => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random() * 32)]).join("");
 const mref = (code) => ref(db, "matches/" + code);
@@ -29,22 +30,34 @@ function rollPool(size) {
   for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[ids[i], ids[j]] = [ids[j], ids[i]]; }
   return ids.slice(0, size).sort((a, b) => HERO_MAP[a].n.localeCompare(HERO_MAP[b].n));
 }
-function buildSequence(bans, picks, first) {
-  const second = first === "radiant" ? "dire" : "radiant";
-  const seq = [];
-  for (let i = 0; i < bans * 2; i++) seq.push({ team: i % 2 === 0 ? first : second, type: "ban" });
-  for (let i = 0; i < picks * 2; i++) seq.push({ team: i % 2 === 0 ? second : first, type: "pick" });
-  return seq;
+const PICKS_PER_TEAM = 5;
+const BANS_PER_TEAM = 8;
+// Cyber Adult Tournament — фиксированный порядок (счёт НА КОМАНДУ):
+// 4 бана -> 2 пика -> 2 бана -> 2 пика -> 2 бана -> 1 пик  (итого 8 банов и 5 пиков на команду)
+function buildSequence(first) {
+  const A = first, B = first === "radiant" ? "dire" : "radiant";
+  const b = (t) => ({ team: t, type: "ban" });
+  const p = (t) => ({ team: t, type: "pick" });
+  return [
+    b(A), b(B), b(A), b(B), b(A), b(B), b(A), b(B), // 4 бана на команду
+    p(B), p(A), p(B), p(A),                         // 2 пика на команду
+    b(A), b(B), b(A), b(B),                         // 2 бана на команду
+    p(B), p(A), p(B), p(A),                         // 2 пика на команду
+    b(A), b(B), b(A), b(B),                         // 2 бана на команду
+    p(B), p(A),                                     // 1 пик на команду
+  ];
 }
 
 // ---------- small UI helpers ----------
 const Btn = ({ children, onClick, disabled, variant = "gold", style = {} }) => {
   const base = { border: "none", borderRadius: 8, padding: "11px 18px", fontWeight: 700, fontSize: 14, cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.45 : 1, display: "inline-flex", alignItems: "center", gap: 8, transition: "filter .15s", ...style };
   const v = {
-    gold: { background: `linear-gradient(180deg,${C.goldSoft},${C.gold})`, color: "#1a1206" },
+    gold: { background: "linear-gradient(180deg,#8b5cf6,#7c3aed)", color: "#fff" },
     dark: { background: C.panel2, color: C.text, border: `1px solid ${C.line}` },
-    radiant: { background: `linear-gradient(180deg,#6fbf63,${C.radiant})`, color: "#0c1a09" },
-    dire: { background: `linear-gradient(180deg,#d9584a,${C.dire})`, color: "#180605" },
+    radiant: { background: "linear-gradient(180deg,#5cc7fb,#38bdf8)", color: "#06283b" },
+    dire: { background: "linear-gradient(180deg,#fcd34d,#fbbf24)", color: "#3a2a05" },
+    ban: { background: "linear-gradient(180deg,#ff6b83,#ff3d5e)", color: "#fff" },
+    pick: { background: "linear-gradient(180deg,#5be8a0,#22c55e)", color: "#08351f" },
     ghost: { background: "transparent", color: C.dim, border: `1px solid ${C.line}` },
   }[variant];
   return <button onMouseDown={e => e.preventDefault()} onClick={disabled ? undefined : onClick} disabled={disabled} style={{ ...base, ...v }}>{children}</button>;
@@ -83,11 +96,11 @@ export default function App() {
 function Header() {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 22 }}>
-      <div style={{ width: 40, height: 40, borderRadius: 9, background: `linear-gradient(135deg,${C.gold},#8a6d1e)`, display: "grid", placeItems: "center" }}>
-        <Swords size={22} color="#1a1206" />
+      <div style={{ width: 40, height: 40, borderRadius: 9, background: "linear-gradient(135deg,#a78bfa,#7c3aed)", display: "grid", placeItems: "center" }}>
+        <Swords size={22} color="#fff" />
       </div>
       <div>
-        <div style={{ fontWeight: 800, fontSize: 19, letterSpacing: .5 }}>STREAMERS BATTLE — DRAFT</div>
+        <div style={{ fontWeight: 800, fontSize: 19, letterSpacing: .5 }}>CYBER ADULT TOURNAMENT</div>
         <div style={{ color: C.dim, fontSize: 12 }}>Random Draft пул + Captains Mode бан/пик</div>
       </div>
     </div>
@@ -115,13 +128,13 @@ const Card = ({ icon, title, desc, cta, onClick }) => (
 // ---------------- CREATE ----------------
 function CreateMatch({ go, enter }) {
   const POOL_SIZE = 45;
-  const [cfg, setCfg] = useState({ radiantName: "Radiant", direName: "Dire", poolSize: POOL_SIZE, bansPerTeam: 2, picksPerTeam: 5, timerSec: 30, firstSide: "radiant" });
+  const [cfg, setCfg] = useState({ radiantName: "Radiant", direName: "Dire", poolSize: POOL_SIZE, timerSec: 30, firstSide: "radiant" });
   const [pw, setPw] = useState({ radiant: "rad" + Math.floor(Math.random() * 900 + 100), dire: "dire" + Math.floor(Math.random() * 900 + 100), observer: "obs" + Math.floor(Math.random() * 900 + 100) });
   const [created, setCreated] = useState(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const set = (k, v) => setCfg(c => ({ ...c, [k]: v }));
-  const totalNeeded = cfg.bansPerTeam * 2 + cfg.picksPerTeam * 2;
+  const totalNeeded = (BANS_PER_TEAM + PICKS_PER_TEAM) * 2;
 
   const create = async () => {
     setErr("");
@@ -137,7 +150,7 @@ function CreateMatch({ go, enter }) {
       config: { ...cfg, firstSide: first },
       auth: { radiant: pw.radiant, dire: pw.dire, observer: pw.observer },
       pool: rollPool(cfg.poolSize),
-      sequence: buildSequence(cfg.bansPerTeam, cfg.picksPerTeam, first),
+      sequence: buildSequence(first),
       actions: [], step: 0, status: "ready", turnStartedAt: 0, version: 1,
     };
     const ok = await saveMatch(code, match);
@@ -154,12 +167,8 @@ function CreateMatch({ go, enter }) {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))", gap: 16 }}>
         <Panel title="Команды и формат" icon={<Shield size={18} />}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <Field label="Название Radiant" value={cfg.radiantName} onChange={e => set("radiantName", e.target.value)} />
-            <Field label="Название Dire" value={cfg.direName} onChange={e => set("direName", e.target.value)} />
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <NumField label="Банов / команду" v={cfg.bansPerTeam} set={v => set("bansPerTeam", v)} min={0} max={7} />
-            <NumField label="Пиков / команду" v={cfg.picksPerTeam} set={v => set("picksPerTeam", v)} min={1} max={5} />
+            <Field label="Название команды 1 (Radiant)" value={cfg.radiantName} onChange={e => set("radiantName", e.target.value)} placeholder="Впишите название" />
+            <Field label="Название команды 2 (Dire)" value={cfg.direName} onChange={e => set("direName", e.target.value)} placeholder="Впишите название" />
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <NumField label="Таймер на ход, сек (0 = выкл)" v={cfg.timerSec} set={v => set("timerSec", v)} min={0} max={120} />
@@ -173,7 +182,7 @@ function CreateMatch({ go, enter }) {
             </label>
           </div>
           <div style={{ background: C.bg, border: `1px solid ${C.line}`, borderRadius: 8, padding: "10px 12px", fontSize: 12.5, color: C.dim }}>
-            Пул: <b style={{ color: C.gold }}>{POOL_SIZE}</b> случайных героев. Всего действий: <b style={{ color: C.text }}>{totalNeeded}</b> ({cfg.bansPerTeam * 2} банов + {cfg.picksPerTeam * 2} пиков). Останется свободных: <b style={{ color: POOL_SIZE - totalNeeded >= 0 ? C.radiant : C.dire }}>{POOL_SIZE - totalNeeded}</b>.
+            Пул: <b style={{ color: C.gold }}>{POOL_SIZE}</b> случайных героев. Формат фиксированный: по <b style={{ color: C.text }}>{BANS_PER_TEAM}</b> банов и <b style={{ color: C.text }}>{PICKS_PER_TEAM}</b> пиков на команду. Баны в 3 стадии (на команду): 4 → 2 → 2.
           </div>
         </Panel>
 
@@ -337,16 +346,6 @@ function DraftRoom({ session, leave }) {
       m.status = "active"; m.turnStartedAt = Date.now(); m.version = (m.version || 0) + 1; return m;
     });
   };
-  const nextGame = async () => {
-    await runTransaction(mref(code), (m) => {
-      if (!m) return;
-      const first = m.config.firstSide;
-      m.game = (m.game || 1) + 1; m.pool = rollPool(m.config.poolSize);
-      m.sequence = buildSequence(m.config.bansPerTeam, m.config.picksPerTeam, first);
-      m.actions = []; m.step = 0; m.status = "ready"; m.turnStartedAt = 0; m.version = (m.version || 0) + 1;
-      return m;
-    });
-  };
 
   if (!match) return <div style={{ marginTop: 40, color: C.dim }}>Загрузка матча {code}…</div>;
   const cfg = match.config;
@@ -359,24 +358,22 @@ function DraftRoom({ session, leave }) {
       {/* top bar */}
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: "10px 14px", marginBottom: 14 }}>
         <RoleBadge role={role} />
-        <div style={{ color: C.dim, fontSize: 13 }}>Игра {match.game || 1}</div>
         <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
-          {match.status === "done" && (role === "radiant" || role === "dire") && <Btn variant="gold" onClick={nextGame}><RefreshCw size={15} /> Следующая игра</Btn>}
           <Btn variant="ghost" onClick={leave}><LogOut size={15} /> Выйти</Btn>
         </div>
       </div>
 
       {/* phase banner */}
-      <PhaseBanner match={match} cur={cur} teamOf={teamOf} remaining={remaining} timerSec={timerSec} />
+      <PhaseBanner match={match} cur={cur} teamOf={teamOf} remaining={remaining} />
 
       {/* sequence strip */}
       <SequenceStrip match={match} teamOf={teamOf} />
 
       {/* main grid: radiant | pool | dire */}
       <div style={{ display: "grid", gridTemplateColumns: "minmax(150px,200px) 1fr minmax(150px,200px)", gap: 14, marginTop: 14, alignItems: "start" }}>
-        <TeamColumn side="radiant" name={cfg.radiantName} picks={picksOf("radiant")} bans={bansOf("radiant")} slots={cfg.picksPerTeam} active={cur?.team === "radiant" && match.status === "active"} />
+        <TeamColumn side="radiant" name={cfg.radiantName} picks={picksOf("radiant")} bans={bansOf("radiant")} slots={PICKS_PER_TEAM} active={cur?.team === "radiant" && match.status === "active"} />
         <PoolArea match={match} cur={cur} myTurn={myTurn} usedIds={usedIds} selected={selected} setSelected={setSelected} commit={commit} busy={busy} role={role} startDraft={startDraft} teamOf={teamOf} />
-        <TeamColumn side="dire" name={cfg.direName} picks={picksOf("dire")} bans={bansOf("dire")} slots={cfg.picksPerTeam} active={cur?.team === "dire" && match.status === "active"} />
+        <TeamColumn side="dire" name={cfg.direName} picks={picksOf("dire")} bans={bansOf("dire")} slots={PICKS_PER_TEAM} active={cur?.team === "dire" && match.status === "active"} />
       </div>
     </div>
   );
@@ -387,19 +384,35 @@ function RoleBadge({ role }) {
   return <div style={{ display: "inline-flex", alignItems: "center", gap: 7, background: C.bg, border: `1px solid ${map.c}`, color: map.c, borderRadius: 20, padding: "5px 12px", fontSize: 12.5, fontWeight: 700 }}>{map.i}{map.t}</div>;
 }
 
-function PhaseBanner({ match, cur, teamOf, remaining, timerSec }) {
-  let text, sub, col = C.gold;
-  if (match.status === "ready") { text = "Пул сформирован — ожидание старта"; sub = "Капитан может нажать «Начать драфт»"; }
-  else if (match.status === "done") { text = "Драфт завершён"; sub = "Составы собраны"; col = C.radiant; }
-  else if (cur) { col = cur.team === "radiant" ? C.radiant : C.dire; text = `${cur.type === "ban" ? "БАН" : "ПИК"} — ${teamOf(cur.team)}`; sub = cur.type === "ban" ? "Капитан выбирает героя для бана" : "Капитан выбирает героя в состав"; }
+function PhaseBanner({ match, cur, teamOf, remaining }) {
+  if (match.status === "ready")
+    return (
+      <div style={{ background: `linear-gradient(90deg, ${C.gold}22, transparent)`, border: `1px solid ${C.line}`, borderLeft: `4px solid ${C.gold}`, borderRadius: 10, padding: "12px 16px" }}>
+        <div style={{ fontWeight: 800, fontSize: 17, color: C.gold }}>Пул сформирован — ожидание старта</div>
+        <div style={{ color: C.dim, fontSize: 12.5 }}>Капитан может нажать «Начать драфт»</div>
+      </div>
+    );
+  if (match.status === "done")
+    return (
+      <div style={{ background: `linear-gradient(90deg, ${C.pick}22, transparent)`, border: `1px solid ${C.line}`, borderLeft: `4px solid ${C.pick}`, borderRadius: 10, padding: "12px 16px" }}>
+        <div style={{ fontWeight: 800, fontSize: 17, color: C.pick }}>Драфт завершён</div>
+        <div style={{ color: C.dim, fontSize: 12.5 }}>Составы собраны</div>
+      </div>
+    );
+  const isBan = cur?.type === "ban";
+  const act = isBan ? C.ban : C.pick;
+  const teamCol = cur?.team === "radiant" ? C.radiant : C.dire;
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 14, background: `linear-gradient(90deg, ${col}22, transparent)`, border: `1px solid ${C.line}`, borderLeft: `4px solid ${col}`, borderRadius: 10, padding: "12px 16px" }}>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontWeight: 800, fontSize: 17, color: col }}>{text}</div>
-        <div style={{ color: C.dim, fontSize: 12.5 }}>{sub}</div>
+    <div style={{ display: "flex", alignItems: "center", gap: 14, background: `linear-gradient(90deg, ${act}30, ${act}0d 45%, transparent)`, border: `1px solid ${act}`, borderRadius: 12, padding: "12px 16px", boxShadow: `0 0 24px ${act}22`, flexWrap: "wrap" }}>
+      <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: act, color: isBan ? "#fff" : "#08351f", fontWeight: 900, fontSize: 16, padding: "8px 15px", borderRadius: 9, letterSpacing: .6 }}>
+        {isBan ? <Ban size={19} /> : <Crown size={19} />} {isBan ? "БАН" : "ПИК"}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontWeight: 800, fontSize: 18, color: teamCol, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{teamOf(cur?.team)}</div>
+        <div style={{ color: C.dim, fontSize: 12.5 }}>{isBan ? "Команда банит героя" : "Команда берёт героя в состав"}</div>
       </div>
       {remaining !== null && (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, color: remaining <= 5 ? C.dire : C.text, fontWeight: 800, fontSize: 26, fontFamily: "monospace" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, color: remaining <= 5 ? C.ban : C.text, fontWeight: 800, fontSize: 28, fontFamily: "monospace" }}>
           <Clock size={20} />{String(remaining).padStart(2, "0")}
         </div>
       )}
@@ -420,7 +433,7 @@ function SequenceStrip({ match, teamOf }) {
             {h ? (
               <>
                 <HeroImg h={h} />
-                {s.type === "ban" && <div style={{ position: "absolute", inset: 0, background: "rgba(10,10,12,.62)", display: "grid", placeItems: "center" }}><Ban size={18} color={C.dire} /></div>}
+                {s.type === "ban" && <div style={{ position: "absolute", inset: 0, background: "rgba(10,10,12,.62)", display: "grid", placeItems: "center" }}><Ban size={18} color={C.ban} /></div>}
               </>
             ) : (
               <div style={{ width: "100%", height: "100%", display: "grid", placeItems: "center", color: col, opacity: .8 }}>{s.type === "ban" ? <Ban size={15} /> : <Crown size={15} />}</div>
@@ -459,7 +472,7 @@ function TeamColumn({ side, name, picks, bans, slots, active }) {
               const h = HERO_MAP[b.heroId];
               return <div key={i} title={h.n} style={{ width: 34, height: 34, borderRadius: 5, overflow: "hidden", position: "relative", border: `1px solid ${C.line}` }}>
                 <HeroImg h={h} style={{ filter: "grayscale(1) brightness(.6)" }} />
-                <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center" }}><Ban size={14} color={C.dire} /></div>
+                <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center" }}><Ban size={14} color={C.ban} /></div>
               </div>;
             })}
           </div>
@@ -472,8 +485,11 @@ function TeamColumn({ side, name, picks, bans, slots, active }) {
 function PoolArea({ match, cur, myTurn, usedIds, selected, setSelected, commit, busy, role, startDraft, teamOf }) {
   const pool = asArr(match.pool).map(id => HERO_MAP[id]);
   const canAct = myTurn && !busy;
+  const isBan = cur?.type === "ban";
+  const actCol = cur ? (isBan ? C.ban : C.pick) : C.gold;
+  const ringCol = match.status === "active" ? actCol : C.line;
   return (
-    <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: 12 }}>
+    <div style={{ background: C.panel, border: `2px solid ${ringCol}`, borderRadius: 12, padding: 12, boxShadow: match.status === "active" ? `0 0 26px ${ringCol}22` : "none" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, flexWrap: "wrap", gap: 8 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, fontSize: 14 }}>
           <Dices size={17} color={C.gold} /> Пул Random Draft <span style={{ color: C.dim, fontWeight: 500 }}>({pool.length} героев)</span>
@@ -485,10 +501,17 @@ function PoolArea({ match, cur, myTurn, usedIds, selected, setSelected, commit, 
         )}
       </div>
 
-      {/* status line for non-active */}
-      {match.status === "active" && !myTurn && (
-        <div style={{ background: C.bg, border: `1px solid ${C.line}`, borderRadius: 8, padding: "8px 12px", marginBottom: 10, color: C.dim, fontSize: 13 }}>
-          {role === "observer" ? "Режим наблюдателя — вы видите драфт в реальном времени." : `Ход соперника: ${teamOf(cur?.team)} ${cur?.type === "ban" ? "банит" : "пикает"}…`}
+      {/* current action indicator */}
+      {match.status === "active" && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, padding: "10px 14px", borderRadius: 10, background: `${actCol}1f`, border: `1px solid ${actCol}`, flexWrap: "wrap" }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 7, background: actCol, color: isBan ? "#fff" : "#08351f", fontWeight: 900, fontSize: 13, padding: "5px 11px", borderRadius: 7, letterSpacing: .4 }}>
+            {isBan ? <Ban size={15} /> : <Crown size={15} />} {isBan ? "ФАЗА БАНОВ" : "ФАЗА ПИКОВ"}
+          </div>
+          <div style={{ fontSize: 13.5, color: C.text }}>
+            {myTurn
+              ? <>Ваш ход — <b style={{ color: actCol }}>{isBan ? "забаньте героя" : "выберите героя в состав"}</b></>
+              : <>Ходит <b style={{ color: cur?.team === "radiant" ? C.radiant : C.dire }}>{teamOf(cur?.team)}</b> — {isBan ? "бан" : "пик"}</>}
+          </div>
         </div>
       )}
       {match.status === "ready" && role === "observer" && (
@@ -505,9 +528,9 @@ function PoolArea({ match, cur, myTurn, usedIds, selected, setSelected, commit, 
             <div key={h.id} onClick={() => clickable && setSelected(isSel ? null : h.id)}
               style={{
                 position: "relative", borderRadius: 8, overflow: "hidden", aspectRatio: "16/9",
-                border: `2px solid ${isSel ? C.gold : used ? "transparent" : C.line}`,
+                border: `2px solid ${isSel ? actCol : used ? "transparent" : C.line}`,
                 cursor: clickable ? "pointer" : "default", opacity: used ? 0.9 : 1,
-                boxShadow: isSel ? `0 0 0 2px ${C.gold}88` : "none", transition: "border-color .12s, transform .12s",
+                boxShadow: isSel ? `0 0 0 3px ${actCol}88` : "none", transition: "border-color .12s, transform .12s, box-shadow .12s",
                 transform: isSel ? "translateY(-2px)" : "none",
               }}>
               <HeroImg h={h} style={used ? { filter: "grayscale(1) brightness(.4)" } : {}} />
@@ -516,7 +539,7 @@ function PoolArea({ match, cur, myTurn, usedIds, selected, setSelected, commit, 
               {used && (
                 <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center" }}>
                   {act?.type === "ban"
-                    ? <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, color: C.dire }}><Ban size={20} /><span style={{ fontSize: 8, fontWeight: 800 }}>BAN</span></div>
+                    ? <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, color: C.ban }}><Ban size={20} /><span style={{ fontSize: 8, fontWeight: 800 }}>BAN</span></div>
                     : <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, color: act?.team === "radiant" ? C.radiant : C.dire }}><Crown size={18} /><span style={{ fontSize: 8, fontWeight: 800 }}>{act?.team === "radiant" ? "RAD" : "DIRE"}</span></div>}
                 </div>
               )}
@@ -527,13 +550,13 @@ function PoolArea({ match, cur, myTurn, usedIds, selected, setSelected, commit, 
 
       {/* action bar */}
       {myTurn && (
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 14, padding: "12px 14px", background: C.bg, border: `1px solid ${cur.type === "ban" ? C.dire : C.gold}`, borderRadius: 10, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 14, padding: "12px 14px", background: `${actCol}14`, border: `1px solid ${actCol}`, borderRadius: 10, flexWrap: "wrap" }}>
           <div style={{ fontSize: 14, color: C.text }}>
-            {selected ? <>Ваш выбор: <b style={{ color: cur.type === "ban" ? C.dire : C.gold }}>{HERO_MAP[selected].n}</b></> : <span style={{ color: C.dim }}>Выберите героя в пуле…</span>}
+            {selected ? <>{isBan ? "Забанить" : "Взять в состав"}: <b style={{ color: actCol }}>{HERO_MAP[selected].n}</b></> : <span style={{ color: C.dim }}>Выберите героя в пуле…</span>}
           </div>
           <div style={{ marginLeft: "auto" }}>
-            <Btn variant={cur.type === "ban" ? "dire" : "gold"} disabled={!selected || busy} onClick={() => commit(selected)}>
-              {cur.type === "ban" ? <><Ban size={16} /> Забанить</> : <><Crown size={16} /> Взять в состав</>}
+            <Btn variant={isBan ? "ban" : "pick"} disabled={!selected || busy} onClick={() => commit(selected)}>
+              {isBan ? <><Ban size={16} /> Забанить</> : <><Crown size={16} /> Взять в состав</>}
             </Btn>
           </div>
         </div>
